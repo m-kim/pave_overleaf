@@ -7,7 +7,7 @@ public:
     void save(std::string &, int, int, visualization &);
 };
 
-PAVE paver("variableName");
+PAVE paver("TrainingSetname");
 paver.save(varName, 
            width, 
            height, 
