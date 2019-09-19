@@ -8,8 +8,19 @@
 \usepackage{graphicx}
 \usepackage{textcomp}
 \usepackage{xcolor}
-\usepackage{caption}
+\usepackage[labelformat=simple]{caption}
+
+%https://tex.stackexchange.com/questions/113459/ieeetran-caption-question
+%IEEETran doesn't like subcaption
+\makeatletter
+\let\MYcaption\@makecaption
+\makeatother
+
 \usepackage{subcaption}
+
+\makeatletter
+\let\@makecaption\MYcaption
+\makeatother
 
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
@@ -38,12 +49,14 @@ pugmire@ornl.gov}
 \maketitle
 
 \begin{abstract}
-    The need for researchers and practitioners to have access to {\it in situ} operations is increasing for artificial intelligence and visualisations tasks as implementations become more complex and scaled widening the gap between computation time and IO throughput. What is more, a growing number of applications continue to be developed dealing with the combination of these two domains. With PAVE we present a solution which allows in place data management between visualisation and machine learning tasks. We then demonstrate our framework with the application of a conditional Generative Adversarial neural Network (cGAN) capable of in situ and at scale training over path traced images resulting in a generative model able to produce real-time scene renderings with accurate light transport and global illumination of a quality comparable to offline approaches. 
+    Machine learning (ML) has emerged as a tool for understanding data at scale. However, this new methodology comes at a cost because ML requires the use of even more HPC resources to generate ML algorithms. In addition to the compute resources required to develop ML algorithms, ML does not side step one of the biggest challenges on leading-edge HPC systems: the increasing gap between compute performance and I/O bandwidth. This has led to a strong push towards \textit{in situ}, processing the data as it is generated, strategies to mitigate the I/O bottleneck. Unfortunately, there are no \textit{in situ} frameworks dedicated to coupling scientific visualization and ML at scale to develop ML algorithms for scientific visualization.
+    
+    To address the ML and \textit{in situ} visualization gap, we introduce PAVE. PAVE is an \textit{in situ} framework which addresses the data management needs between visualisation and machine learning tasks. We demonstrate our framework with a case study that accelerates physically-based light rendering, path-tracing, through the use of a conditional Generative Adversarial neural Network (cGAN). PAVE couples the training over path-traced images resulting in a generative model able to produce scene renderings with accurate light transport and global illumination of a quality comparable to offline approaches in a more efficient manner.
     
 \end{abstract}
 
 \begin{IEEEkeywords}
-    VTKm, neural networks, generative adversarial network, in-situ, PyTorch, path tracing
+    VTKm, neural networks, generative adversarial network, in situ, PyTorch, path-tracing
 \end{IEEEkeywords}
 
 \newcommand{\markcomment}[1]{\textcolor{red}{#1}}
@@ -61,34 +74,11 @@ pugmire@ornl.gov}
 \input{CaseStudy1.tex}
 
 
-\subsection{Our Provided Example of PAVE}\label{ex}
 
-For our PyTorch in situ proposal the current systems we employ are VTK-m, for rendering path traced images and conditional geometry buffers focus, and PAVE for data management. We discuss the design pattern for our in situ visualisation task with support from deep learning in the order of operations followed within the pipeline of use. Namely, we present the design pattern for rendering light transport in VTK-m coupled with data transport to PyTorch (\ref{pathtracer}). Subsequently we explain the infrastructure for embedding VTK-m throughput managed by PAVE within PyTorch and demonstrate through example (\ref{pytorch}) by  instantiating a PyTorch data interface allowing for data parallelization and multi-GPU/distributed training as used within the framework for training our cGAN model.
-
-\subsubsection{VTK-m Light Transport Visualisation}\label{pathtracer}
-
-Path traced images are maintained within C++11 as VTK-m arrays which can be passed by reference directly to PyTorch using PAVE and retrieved during training or when utilising the neural network to generate novel scene renderings from rendered geometry buffers. 
-
-\subsubsection{PyTorch cGAN Global Illumination Generator}\label{pytorch}
-
-For training, our solution used by the cGAN is ``{\it ADIOSDataLoader}'', a data class inheriting from the abstract indexing class PyTorch {\it torch.utils.data.Dataset}. The {\it AdiosDataLoader} employs PAVE to either retrieve from file or have passed by reference vector representations of path traced images and conditional buffers. Within VTK-m during generation these vectors represented as VTK-m vectors and within PyTorch as numpy arrays. In this manner the training or test sets needed by PyTorch and created by VTK-m are available to PyTorch in situ or with reference to written memory. VTK-m generated datasets can be retrieved with {\it read\_adios\_bp()} or passed to a similar {\it get\_adios\_bp()} and subsequently forwarded to our {\it get\_split()}  to partition the dataset into 60\% training, 20\% testing and 20\% validation subsets. The split datasets are then used to construct the {\it AdiosDataLoader} class which inherits from the {\it torch.utils.data.DataLoader} thereby providing a data sampler of our VTK-m renderings with a single-process or multi-process iterator over the dataset affording the tools necessary to train our neural networks in the canonical manner.
-
-% other example scripts
-%\inputminted{python}{pytorchAdiosRead.py}
-%\inputminted{python}{trainingSplit.py}
-
-
-
-
-In the above code sample the {\it AdiosDataLoader} class is used to partition the data set into training, validation and testing as well as offer a distributable data sampler with an array-like data structure allowing index access to elements and collection size functionality.
-
-%\noindent\rule{0.5\textwidth}{1pt}
-%\inputminted{python}{adiosdataloader.py}
-%\noindent\rule{0.5\textwidth}{1pt}
 
 \section{Cornell Box Experiment}
 
-To evaluate the quality of in situ deep learning aided visualisations train the cGAN networks on rendered images of a Cornell box, a commonly used 3D modelling framework for quality assessment. We train the model using renderings of the Cornell box with high light sample count and depth computation per ray for various camera angle perspectives into the box along with the associated image geometry buffers for a given camera orientation. We then assess the quality of the models final generated renderings looking at the accuracy of global illumination. We then also demonstrate the performance of the models ability to render global illumination when given image buffers for a novel scene not used for training similar in content but not exact. The scene used for training is comprised of the classic set up with one overhead light source in the center of a white ceiling, a white back wall and a white floor. The remaining walls are then colored red on the left and green on the right in order to afford different colored light transport and demonstrate diffuse interreflection. The contents of the Cornell box are three cuboids of various shapes and sizes to provide diverse shading and diffused lighting. 
+To evaluate the quality of \textit{in situ} deep learning aided visualisations train the cGAN networks on rendered images of a Cornell box, a commonly used 3D modelling framework for quality assessment. We train the model using renderings of the Cornell box with high light sample count and depth computation per ray for various camera angle perspectives into the box along with the associated image geometry buffers for a given camera orientation. We then assess the quality of the models final generated renderings looking at the accuracy of global illumination. We then also demonstrate the performance of the models ability to render global illumination when given image buffers for a novel scene not used for training similar in content but not exact. The scene used for training is comprised of the classic set up with one overhead light source in the center of a white ceiling, a white back wall and a white floor. The remaining walls are then colored red on the left and green on the right in order to afford different colored light transport and demonstrate diffuse interreflection. The contents of the Cornell box are three cuboids of various shapes and sizes to provide diverse shading and diffused lighting. 
 
 %\vspace{-1.5em}
 \begin{figure}
